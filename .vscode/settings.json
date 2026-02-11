@@ -1,0 +1,10 @@
+{
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.pnpm": true,
+    "**/.bin": true,
+    "**/@types": true,
+    "**/drizzle-kit": true,
+    "**/drizzle-orm": true
+  }
+}

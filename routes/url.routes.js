@@ -1,14 +1,68 @@
 import express from 'express'
+import { shortenPostRequestBodySchema } from '../validation/request.validation.js'
+import db from '../db/index.js'
+import { urlsTable } from '../models/index.js'
+import { nanoid } from 'nanoid'
+import { ensureAuthenticated } from '../middleware/auth.middleware.js'
+import { and, eq } from 'drizzle-orm'
+import { id } from 'zod/locales'
+const router = express.Router();
 
-const router=express.Router();
 
-router.post('/shorten',async function(req,res){
-    const userID=req.user.id;
 
-    if(!userID){
-        return res.status(401).json({message:'Not authenticated'})
+router.post('/shorten', ensureAuthenticated, async function (req, res) {
+
+    const validationResult = await shortenPostRequestBodySchema.safeParseAsync(req.body)
+
+    if (validationResult.error) {
+        return res.status(400).json({ error: 'URL not valid' })
     }
-    
+
+    const { url, code } = validationResult.data
+
+    const shortCode = code ?? nanoid(6)
+
+    const [result] = await db.insert(urlsTable).values({
+        shortCode,
+        targetURL: url,
+        userId: req.user.id
+
+    }).returning({
+        id: urlsTable.id,
+        shortCode: urlsTable.shortCode,
+        targetURL: urlsTable.targetURL
+    })
+
+    return res.status(200)
+        .json({ id: result.id, shortCode: result.shortCode, targetURL: result.targetURL })
+
+})
+
+router.get('/codes', ensureAuthenticated, async function (req, res) {
+    const codes = await db.select().from(urlsTable).where(eq(urlsTable.userId, req.user.id))
+    return res.status(200).json({ codes })
+})
+
+router.delete('/:shortCode',ensureAuthenticated,async function(req,res){
+    const id=req.params.id
+    await db.delete(urlsTable).where(and(eq(urlsTable.id,id),eq(urlsTable.userId,req.user.id)))
+
+    return res.status(200).json({message:"Deleted successfully"})
+
+})
+
+router.get('/:shortCode', async function (req, res) {
+
+    const code = req.params.shortCode
+    const [result] = await db.select({
+        targetURL: urlsTable.targetURL
+    }).from(urlsTable).where(eq(urlsTable.shortCode, code))
+
+    if (!result) {
+        return res.status(400).json({ error: "Invalid error" })
+    }
+
+    return res.redirect(result.targetURL)
 })
 
 

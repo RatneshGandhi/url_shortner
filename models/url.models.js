@@ -9,6 +9,6 @@ export const urlsTable=pgTable('urls',{
     userId:uuid('user_id').references(()=>usersTable.id).notNull(),
 
     createdAt:timestamp('created_at').defaultNow().notNull(),
-    updatedAt:timestamp('updated-at').$onUpdate(()=> new Date()),
+    updatedAt:timestamp('updated_at').$onUpdate(()=> new Date()),
 
 })
